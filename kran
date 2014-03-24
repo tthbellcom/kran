@@ -1,0 +1,142 @@
+#!/bin/bash
+
+function kran_logo(){
+  cat <<EOF
+  _________
+ |X X_X_X_X|                What else would you
+ |X|    _ ¿_                use to handle your
+ |X| __| '__|_  _ ___       containers?
+ |X|/ /| |/   \| '__ |
+ |X| < |_| (_) | | | |
+ |X|\_\   \__|_|_| |_|
+
+EOF
+}
+
+function kran_usage(){
+  cat <<EOF
+usage `basename $0`
+    up - start container
+    ssh - connect to container
+    drush, d - execute drush command in container
+    clean - kill all containers, and remove them
+    init-site [name] - initialize site
+
+EOF
+}
+
+function init(){
+  export DOCKER_HOST=tcp://localhost:4243
+  source ~/.kran.conf
+
+  # find relative directory
+  PWD=$(pwd)
+  WD=${PWD/$LOCAL_SITES/}
+  DIR=${WD#*/}
+
+  #find site from path
+  IFS='/' read -ra ADDR <<< "$WD"
+  SITE=${ADDR[0]}
+
+  source $LOCAL_SITES$SITE/ports
+
+  if [[ -z $SITE ]]; then
+    echo "Couldn't determine site, correct directory?";
+    exit 1;
+  fi
+}
+
+function start(){
+  echo "Running docker with site $1"
+  echo -e "==> http://localhost:"'\e[0;32m'$HTTP'\e[0m'
+  echo -e "==> ssh root@localhost -p "'\e[0;32m'$SSH'\e[0m'
+
+  # Run docker, map directories
+  docker run -rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
+    -v $SITES$SITE/www:/var/www\
+    -v $SITES$SITE/mysql:/var/lib/mysql\
+    tth/wheezy /opt/start_supervisor_log.sh
+}
+
+function connect_ssh(){
+  echo "Connecting to container via ssh"
+  echo "root password is root"
+
+  # Remove the old entry for known_hosts (changes on each build)
+  ssh-keygen -f "/home/tth/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
+
+  # Dont store knownhosts, dont check
+  ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH
+}
+
+function drush_cmd(){
+  ARGS="${@:2}"
+
+  # Remove the old entry for known_hosts (changes on each build)
+  ssh-keygen -f "/home/tth/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
+
+  ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH "cd /var/$DIR && drush $ARGS"
+}
+
+function initalize_site(){
+  source ~/.kran.conf
+  if [[ -d "$LOCAL_SITES$2" ]]; then
+    echo "Site already exists?"
+  else
+    echo "Initialize site $2"
+    echo $LOCAL_SITES$2
+
+    mkdir -p $LOCAL_SITES$2/www
+    mkdir -p $LOCAL_SITES$2/www/public_html
+    mkdir -p $LOCAL_SITES$2/www/tmp
+    mkdir -p $LOCAL_SITES$2/www/logs
+    mkdir -p $LOCAL_SITES$2/tmp
+    mkdir -p $LOCAL_SITES$2/mysql
+
+    source ~/.kran.port
+
+    export DOCKER_HOST=tcp://localhost:4243
+    source ~/.kran.conf
+
+    NEWPORT=$[PORT+2]
+    HTTPPORT=$[PORT+1]
+    SSHPORT=$[PORT+2]
+
+    echo "PORT="$NEWPORT > ~/.kran.port
+    echo "HTTP="$HTTPPORT > $LOCAL_SITES$2/ports
+    echo "SSH="$SSHPORT >> $LOCAL_SITES$2/ports
+
+    docker run -rm -p 49800:80 -p 49801:6081 -p 49900:22\
+    -v $SITES$2/www:/var/www\
+    -v $SITES$2/tmp:/root/tmp\
+    -v $SITES$2/mysql:/var/lib/mysql\
+    tth/wheezy /opt/install_db.sh
+  fi
+}
+
+function docker_cleanup(){
+  echo "This will kill all active containers, and remove all containers afterwards..."
+  read -r -p "Are you sure? [y/N] " RESPONSE
+  case $RESPONSE in
+    [yY][eE][sS]|[yY] )
+      docker ps -a -q | xargs docker kill
+      echo "..."
+      docker ps -a -q | xargs docker rm
+      echo "... Done!"
+      ;;
+    *)
+      exit
+      ;;
+  esac
+}
+
+kran_logo
+
+case $1 in
+  up) init; start;;
+  ssh) init; connect_ssh;;
+  init-site | i) initalize_site $@;;
+  drush | d) init; drush_cmd $@;;
+  clean) docker_cleanup;;
+  *) kran_usage; exit 1;
+esac
