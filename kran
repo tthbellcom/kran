@@ -79,6 +79,7 @@ function start(){
 }
 
 function build(){
+  cat ~/.ssh/id_rsa.pub > ~/.kran/wheezy/adds/id_rsa.pub;
   cd ~/.kran/wheezy; docker build -rm -t="tth/wheezy" .;
 }
 
