@@ -27,8 +27,12 @@ usage `basename $0`
 EOF
 }
 
-function init(){
+
+if [ "$(uname)" == "Darwin" ]; then
   export DOCKER_HOST=tcp://localhost:4243
+fi
+
+function init(){
   source ~/.kran/kran.conf
 
   # find relative directory
@@ -125,7 +129,6 @@ function initalize_site(){
     # Add default vhost.
     cp ~/.kran/vhost/000-default $LOCAL_SITES$2/vhost/000-default
 
-    export DOCKER_HOST=tcp://localhost:4243
     source ~/.kran/kran.conf
 
     # Get latest port.
