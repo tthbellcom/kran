@@ -66,11 +66,13 @@ function start(){
   if [ "$(uname)" == "Darwin" ]; then
     PARAMS="run -rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
+      -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
       -v /mnt/sda/lib/mysql:/var/lib/mysql\
      tth/wheezy /opt/start_supervisor_log.sh"
   else
     PARAMS="run -rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
+      -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
       -v $SITES$SITE/mysql:/var/lib/mysql\
      tth/wheezy /opt/start_supervisor_log.sh"
   fi
