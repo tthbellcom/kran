@@ -94,7 +94,7 @@ function connect_ssh(){
   echo "root password is root"
 
   # Remove the old entry for known_hosts (changes on each build)
-  ssh-keygen -f "/home/tth/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
+  ssh-keygen -f "~/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
 
   # Dont store knownhosts, dont check
   ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH
@@ -104,7 +104,7 @@ function drush_cmd(){
   ARGS="${@:2}"
 
   # Remove the old entry for known_hosts (changes on each build)
-  ssh-keygen -f "/home/tth/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
+  ssh-keygen -f "~/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
 
   ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH "cd /var/$DIR && drush $ARGS"
 }
