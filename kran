@@ -64,12 +64,12 @@ function start(){
   # Check if were running on a mac. If we are, we keep mysql
   # in the vagrant box.
   if [ "$(uname)" == "Darwin" ]; then
-    PARAMS="run -rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
+    PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
       -v /mnt/sda/lib/mysql:/var/lib/mysql\
      tth/wheezy /opt/start_supervisor_log.sh"
   else
-    PARAMS="run -rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
+    PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
       -v $SITES$SITE/mysql:/var/lib/mysql\
      tth/wheezy /opt/start_supervisor_log.sh"
@@ -80,7 +80,7 @@ function start(){
 
 function build(){
   cat ~/.ssh/id_rsa.pub > ~/.kran/wheezy/adds/id_rsa.pub;
-  cd ~/.kran/wheezy; docker build -rm -t="tth/wheezy" .;
+  cd ~/.kran/wheezy; docker build --rm -t="tth/wheezy" .;
 }
 
 function connect_ssh(){
@@ -142,12 +142,12 @@ function initalize_site(){
     # Check if were running on a mac. If we are, we keep mysql
     # in the vagrant box.
     if [ "$(uname)" == "Darwin" ]; then
-      PARAMS="run -rm -t -i -p 10900:80 -p 10901:22 -dns 8.8.8.8\
+      PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 -dns 8.8.8.8\
         -v $SITES$2/www:/var/www\
         -v /mnt/sda/lib/mysql:/var/lib/mysql\
        tth/wheezy /opt/install_db.sh"
     else
-      PARAMS="run -rm -t -i -p 10900:80 -p 10901:22 -dns 8.8.8.8\
+      PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 -dns 8.8.8.8\
         -v $SITES$2/www:/var/www\
         -v $SITES$2/mysql:/var/lib/mysql\
        tth/wheezy /opt/install_db.sh"
