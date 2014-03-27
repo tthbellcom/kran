@@ -23,6 +23,7 @@ usage `basename $0`
     drush, d - execute drush command in container
     clean - kill all containers, and remove them
     init-site [name] - initialize site
+    install-drupal [project name] - download and install drupal
 
 EOF
 }
