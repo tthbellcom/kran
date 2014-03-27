@@ -27,29 +27,63 @@
 
 
 ## Installation
-### Linux
-Download kran put it in your $PATH (ex. /usr/local/bin)
-
-Then run
-``` kran build ```
-
-### Mac
-Download kran put it in your $PATH (ex. /usr/local/bin)
-
-Download Vagrantfile and put it in ~/vagrant
-
-In terminal
-
-```
-cd ~/vagrant
-vagrant up
-kran build
-```
-
 ### On both
 Download dotkran
 https://github.com/tthbellcom/dotkran
-  
+
+```
+# Clone dotkran repository to home directory.
+cd ~
+git clone https://github.com/tthbellcom/dotkran.git .kran
+
+# Download kran
+curl -o kran https://raw.githubusercontent.com/tthbellcom/kran/master/kran
+
+# Make executable
+chmod +x kran
+
+# Copy into $PATH
+sudo cp kran /usr/local/bin/
+
+```
+
+### Linux
+Then run
+``` 
+# Check/modify config
+vim ~/.kran/kran.conf
+
+# Build docker container
+kran build 
+```
+
+### Mac
+
+Download Vagrantfile and put it in ~/vagrant
+
+In a terminal
+
+```
+# Create directory for vagranfile (this directory will also house your files)
+cd ~
+mkdir vagrant 
+
+# Download vagrant file and put it in a relevant directory
+cd vagrant
+curl -o Vagrantfile https://raw.githubusercontent.com/tthbellcom/kran/master/Vagrantfile
+
+# Vagrant up'aaaaah
+vagrant up
+
+# Check/modify config
+vim ~/.kran/kran.conf
+
+# Build docker container
+kran build
+```
+
+
+
   
 ## Usage
 Run ``` kran ``` to see usage
