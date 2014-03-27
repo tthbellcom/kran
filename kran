@@ -56,8 +56,9 @@ function init(){
 function start(){
 
 # Run mailcatcher
-  MAILCATCHER_IS_RUNNING=`netstat -tna | grep 1025 | wc -l`
-  if [[ $MAILCATCHER_IS_RUNNING == 0 ]]; then
+  if [ "$(uname)" == "Darwin" ]; then
+    mailcatcher --smtp-ip 192.168.33.1
+  else
     mailcatcher --smtp-ip 172.17.42.1
   fi
 
