@@ -2,8 +2,9 @@
 
 function kran_logo(){
   cat <<EOF
-  _________
- |X X_X_X_X|                What else would you
+  Λ
+ |X|_______
+ |X X_X_X_X'                What else would you
  |X|    _ ¿_                use to handle your
  |X| __| '__|_  _ ___       containers?
  |X|/ /| |/   \| '__ |
@@ -17,6 +18,7 @@ function kran_usage(){
   cat <<EOF
 usage `basename $0`
     up - start container
+    build - build docker containers
     ssh - connect to container
     drush, d - execute drush command in container
     clean - kill all containers, and remove them
@@ -27,7 +29,7 @@ EOF
 
 function init(){
   export DOCKER_HOST=tcp://localhost:4243
-  source ~/.kran.conf
+  source ~/.kran/kran.conf
 
   # find relative directory
   PWD=$(pwd)
@@ -47,15 +49,37 @@ function init(){
 }
 
 function start(){
+
+# Run mailcatcher
+  MAILCATCHER_IS_RUNNING=`netstat -tna | grep 1025 | wc -l`
+  if [[ $MAILCATCHER_IS_RUNNING == 0 ]]; then
+    mailcatcher --smtp-ip 172.17.42.1
+  fi
+
   echo "Running docker with site $1"
   echo -e "==> http://localhost:"'\e[0;32m'$HTTP'\e[0m'
   echo -e "==> ssh root@localhost -p "'\e[0;32m'$SSH'\e[0m'
+  echo ""
 
+  # Check if were running on a mac. If we are, we keep mysql
+  # in the vagrant box.
+  if [ "$(uname)" == "Darwin" ]; then
+    PARAMS="run -rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
+      -v $SITES$SITE/www:/var/www\
+      -v /mnt/sda/lib/mysql:/var/lib/mysql\
+     tth/wheezy /opt/start_supervisor_log.sh"
+  else
+    PARAMS="run -rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
+      -v $SITES$SITE/www:/var/www\
+      -v $SITES$SITE/mysql:/var/lib/mysql\
+     tth/wheezy /opt/start_supervisor_log.sh"
+  fi
   # Run docker, map directories
-  docker run -rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
-    -v $SITES$SITE/www:/var/www\
-    -v $SITES$SITE/mysql:/var/lib/mysql\
-    tth/wheezy /opt/start_supervisor_log.sh
+  docker $PARAMS
+}
+
+function build(){
+  cd ~/.kran/wheezy; docker build -rm -t="tth/wheezy" .;
 }
 
 function connect_ssh(){
@@ -79,38 +103,56 @@ function drush_cmd(){
 }
 
 function initalize_site(){
-  source ~/.kran.conf
+  source ~/.kran/kran.conf
   if [[ -d "$LOCAL_SITES$2" ]]; then
     echo "Site already exists?"
   else
     echo "Initialize site $2"
     echo $LOCAL_SITES$2
 
+    # Create site folders.
     mkdir -p $LOCAL_SITES$2/www
     mkdir -p $LOCAL_SITES$2/www/public_html
     mkdir -p $LOCAL_SITES$2/www/tmp
     mkdir -p $LOCAL_SITES$2/www/logs
     mkdir -p $LOCAL_SITES$2/tmp
     mkdir -p $LOCAL_SITES$2/mysql
+    mkdir -p $LOCAL_SITES$2/vhost
 
-    source ~/.kran.port
+    # Add default vhost.
+    cp ~/.kran/vhost/000-default $LOCAL_SITES$2/vhost/000-default
 
     export DOCKER_HOST=tcp://localhost:4243
-    source ~/.kran.conf
+    source ~/.kran/kran.conf
 
+    # Get latest port.
+    source ~/.kran/port.conf
+
+    # Calculate new ports for container and port config.
     NEWPORT=$[PORT+2]
     HTTPPORT=$[PORT+1]
     SSHPORT=$[PORT+2]
 
-    echo "PORT="$NEWPORT > ~/.kran.port
+    echo "PORT="$NEWPORT > ~/.kran/port.conf
     echo "HTTP="$HTTPPORT > $LOCAL_SITES$2/ports
     echo "SSH="$SSHPORT >> $LOCAL_SITES$2/ports
 
-    docker run -rm -p 49800:80 -p 49801:6081 -p 49900:22\
-    -v $SITES$2/www:/var/www\
-    -v $SITES$2/tmp:/root/tmp\
-    -v $SITES$2/mysql:/var/lib/mysql\
-    tth/wheezy /opt/install_db.sh
+    # Fire up container and initialize site with db.
+    # Check if were running on a mac. If we are, we keep mysql
+    # in the vagrant box.
+    if [ "$(uname)" == "Darwin" ]; then
+      PARAMS="run -rm -t -i -p 10900:80 -p 10901:22 -dns 8.8.8.8\
+        -v $SITES$2/www:/var/www\
+        -v /mnt/sda/lib/mysql:/var/lib/mysql\
+       tth/wheezy /opt/install_db.sh"
+    else
+      PARAMS="run -rm -t -i -p 10900:80 -p 10901:22 -dns 8.8.8.8\
+        -v $SITES$2/www:/var/www\
+        -v $SITES$2/mysql:/var/lib/mysql\
+       tth/wheezy /opt/install_db.sh"
+    fi
+
+    docker $PARAMS
   fi
 }
 
@@ -119,8 +161,10 @@ function docker_cleanup(){
   read -r -p "Are you sure? [y/N] " RESPONSE
   case $RESPONSE in
     [yY][eE][sS]|[yY] )
+      # Kill all containers.
       docker ps -a -q | xargs docker kill
       echo "..."
+      # Remove all containers.
       docker ps -a -q | xargs docker rm
       echo "... Done!"
       ;;
@@ -134,6 +178,7 @@ kran_logo
 
 case $1 in
   up) init; start;;
+  build) build;;
   ssh) init; connect_ssh;;
   init-site | i) initalize_site $@;;
   drush | d) init; drush_cmd $@;;
