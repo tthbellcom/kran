@@ -14,16 +14,17 @@
 
 
 ## Requirements 
+*Mac only
 - Virtualbox*
-  https://www.virtualbox.org/wiki/Downloads
+ - https://www.virtualbox.org/wiki/Downloads
 
 - Vagrant*
-  http://www.vagrantup.com/downloads.html
+ - http://www.vagrantup.com/downloads.html
 
 - Docker (On Mac, download the Docker OS X Client)
-  https://www.docker.io/gettingstarted/
+ - https://www.docker.io/gettingstarted/
 
-*Mac only
+
 
 ## Installation
 ### Linux
@@ -44,6 +45,10 @@ cd ~/vagrant
 vagrant up
 kran build
 ```
+
+### On both
+Download dotkran
+https://github.com/tthbellcom/dotkran
   
   
 ## Usage
