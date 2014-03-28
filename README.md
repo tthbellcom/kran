@@ -55,13 +55,11 @@ vim ~/.kran/kran.conf
 
 # Move port config into place
 cp port.conf.default port.conf
-
 ```
 
 ### Linux
 Then run
 ``` 
-
 # Build docker container
 kran build 
 ```
@@ -84,7 +82,5 @@ kran build
 ```
 
 
-
-  
 ## Usage
 Run ``` kran ``` to see usage
