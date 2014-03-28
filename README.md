@@ -33,25 +33,34 @@ https://github.com/tthbellcom/dotkran
 
 ```
 # Clone dotkran repository to home directory.
-cd ~
+cd $HOME
 git clone https://github.com/tthbellcom/dotkran.git .kran
 
 # Download kran
-curl -o kran https://raw.githubusercontent.com/tthbellcom/kran/master/kran
+git clone https://github.com/tthbellcom/kran.git kran
+
+# Get in there
+cd kran
 
 # Make executable
 chmod +x kran
 
-# Copy into $PATH
-sudo cp kran /usr/local/bin/
+# move into $PATH
+sudo ln -s $HOME/kran/kran /usr/local/bin/
+
+# Check/modify config
+cd ~/.kran
+cp kran.conf.default kran.conf
+vim ~/.kran/kran.conf
+
+# Move port config into place
+cp port.conf.default port.conf
 
 ```
 
 ### Linux
 Then run
 ``` 
-# Check/modify config
-vim ~/.kran/kran.conf
 
 # Build docker container
 kran build 
@@ -65,18 +74,10 @@ In a terminal
 
 ```
 # Create directory for vagranfile (this directory will also house your files)
-cd ~
-mkdir vagrant 
-
-# Download vagrant file and put it in a relevant directory
-cd vagrant
-curl -o Vagrantfile https://raw.githubusercontent.com/tthbellcom/kran/master/Vagrantfile
+cd ~/kran
 
 # Vagrant up'aaaaah
 vagrant up
-
-# Check/modify config
-vim ~/.kran/kran.conf
 
 # Build docker container
 kran build
