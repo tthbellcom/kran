@@ -1,0 +1,72 @@
+#!/bin/bash
+VERSION="0.1.1"
+
+# Variable stuff.
+SITE=$(kran site)
+ARGS="${@:1}"
+export KROG_ARGS=$ARGS
+export KROG_ARG1=$2
+export KROG_ARG2=$3
+export KROG_ARG3=$4
+export KROG_ARG4=$5
+
+# Execute command in container.
+function exec_ssh(){
+  echo "==> SSH"
+  command `which kran` ssh $@
+}
+
+# Execute local command.
+function exec_local(){
+  echo "==> RUN"
+  command $@
+}
+
+# Copy file to container.
+function exec_scp(){
+  echo "==> ADD"
+  kran scp $HOME/.kran/hooks/$1 $2
+}
+
+# Show message.
+function exec_msg(){
+  echo $@
+}
+
+# Parse hooks.
+function parse_hook(){
+  # Replace varibles
+  ARGS="${@:2}"
+  ARGS=$(echo $ARGS | sed -e "s/\$ARGS/$KROG_ARGS/g")
+  ARGS=$(echo $ARGS | sed -e "s/\$1/$KROG_ARG1/g")
+  ARGS=$(echo $ARGS | sed -e "s/\$2/$KROG_ARG2/g")
+  ARGS=$(echo $ARGS | sed -e "s/\$3/$KROG_ARG3/g")
+  ARGS=$(echo $ARGS | sed -e "s/\$4/$KROG_ARG4/g")
+  
+  case $1 in
+    SSH) exec_ssh $ARGS;;
+    RUN) exec_local $ARGS;;
+    ADD) exec_scp $ARGS;;
+    MSG) exec_msg $ARGS;;
+  esac
+}
+
+if [[ -z $SITE ]]; then
+  echo "krog must be run from a kran site dir!"
+  exit 1
+fi
+
+if [[ -z $1 ]]; then
+  echo "krog v. $VERSION"
+  echo ""
+  echo "You must specify a hook."
+  echo "hooks available:"
+  ls -1 $HOME/.kran/hooks/ | sed 's/^/  /'
+  echo ""
+  exit 1
+fi
+
+
+while read p; do
+  parse_hook $p
+done < ~/.kran/hooks/$1
