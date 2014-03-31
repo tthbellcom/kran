@@ -1,5 +1,7 @@
 #!/bin/bash
-VERSION="0.1.3"
+VERSION="0.1.4"
+# Load configuration
+source ~/.kran/kran.conf
 
 function kran_logo(){
   cat <<EOF
@@ -33,7 +35,6 @@ if [ "$(uname)" == "Darwin" ]; then
 fi
 
 function which_site(){
-  source ~/.kran/kran.conf
 
   # find relative directory
   PWD=$(pwd)
@@ -47,16 +48,7 @@ function which_site(){
 }
 
 function init(){
-  source ~/.kran/kran.conf
-
-  # find relative directory
-  PWD=$(pwd)
-  WD=${PWD/$LOCAL_SITES/}
-  DIR=${WD#*/}
-
-  #find site from path
-  IFS='/' read -ra ADDR <<< "$WD"
-  SITE=${ADDR[0]}
+  SITE=$(which_site $@);
 
   source $LOCAL_SITES$SITE/ports
 
@@ -82,13 +74,13 @@ function start(){
   # Check if were running on a mac. If we are, we keep mysql
   # in the vagrant box.
   if [ "$(uname)" == "Darwin" ]; then
-    PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
+    PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
       -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
       -v /mnt/sda/lib/$SITE/mysql:/var/lib/mysql\
      tth/wheezy /opt/start_supervisor_log.sh"
   else
-    PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 -dns 8.8.8.8\
+    PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
       -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
       -v $SITES$SITE/mysql:/var/lib/mysql\
@@ -134,7 +126,6 @@ function drush_cmd(){
 }
 
 function initalize_site(){
-  source ~/.kran/kran.conf
   if [[ -d "$LOCAL_SITES$2" ]]; then
     echo "Site already exists?"
   else
@@ -153,8 +144,6 @@ function initalize_site(){
     # Add default vhost.
     cp ~/.kran/vhost/000-default $LOCAL_SITES$2/vhost/000-default
 
-    source ~/.kran/kran.conf
-
     # Get latest port.
     source ~/.kran/port.conf
 
@@ -171,12 +160,12 @@ function initalize_site(){
     # Check if were running on a mac. If we are, we keep mysql
     # in the vagrant box.
     if [ "$(uname)" == "Darwin" ]; then
-      PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 -dns 8.8.8.8\
+      PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 --dns 8.8.8.8\
         -v $SITES$2/www:/var/www\
         -v /mnt/sda/lib/$2/mysql:/var/lib/mysql\
        tth/wheezy /opt/install_db.sh"
     else
-      PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 -dns 8.8.8.8\
+      PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 --dns 8.8.8.8\
         -v $SITES$2/www:/var/www\
         -v $SITES$2/mysql:/var/lib/mysql\
        tth/wheezy /opt/install_db.sh"
