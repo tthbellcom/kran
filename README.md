@@ -88,6 +88,9 @@ Run ``` kran ``` to see usage
 # krog
 Supposed to make it easier to write scripts for the containers
 
+## Installation
+Link into $PATH like kran
+
 Writing a krog hook, each line is prefixed with one of the 4 following keywords.
 Lines without one of these, will be ignored.
 
