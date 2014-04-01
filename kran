@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.1.5"
+VERSION="0.1.6"
 # Load configuration
 source ~/.kran/kran.conf
 
@@ -23,7 +23,6 @@ usage `basename $0`
     up - start container
     build - build docker containers
     ssh - connect to container
-    drush, d - execute drush command in container
     clean - kill all containers, and remove them
     init-site [name] - initialize site
 
@@ -44,8 +43,9 @@ if [ "$ARCH" == "Darwin" ]; then
   export DOCKER_HOST=tcp://localhost:4243
 fi
 
-function which_site(){
-  echo $SITE
+function print_params(){
+  echo "SITE=$SITE"
+  echo "DIR=$DIR"
 }
 
 function init(){
@@ -79,6 +79,8 @@ function start(){
       -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
       -v /mnt/sda/lib/$SITE/mysql:/var/lib/mysql\
      tth/wheezy /opt/start_supervisor_log.sh"
+
+    echo "darwin start"
   else
     PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
@@ -114,15 +116,6 @@ function connect_ssh(){
 
 function copy_ssh(){
   scp -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' -P $SSH $2 root@localhost:$3
-}
-
-function drush_cmd(){
-  ARGS="${@:2}"
-  echo $DIR
-  # Remove the old entry for known_hosts (changes on each build)
-  ssh-keygen -f "~/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
-
-  ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH "cd /var/$DIR && drush $ARGS"
 }
 
 function initalize_site(){
@@ -199,8 +192,7 @@ case $1 in
   ssh) init; connect_ssh $@;;
   scp) init; copy_ssh $@;;
   init-site | i) initalize_site $@;;
-  drush | d) init; drush_cmd $@;;
   clean) docker_cleanup;;
-  site) which_site;;
+  params) print_params;;
   *) kran_logo; kran_usage; exit 1;
 esac
