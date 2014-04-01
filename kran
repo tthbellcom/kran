@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.1.4"
+VERSION="0.1.5"
 # Load configuration
 source ~/.kran/kran.conf
 
@@ -30,50 +30,50 @@ usage `basename $0`
 EOF
 }
 
-if [ "$(uname)" == "Darwin" ]; then
+# find relative directory
+PWD=$(pwd)
+WD=${PWD/$LOCAL_SITES/}
+DIR=${WD#*/}
+#find site from path
+IFS='/' read -ra ADDR <<< "$WD"
+SITE=${ADDR[0]}
+
+ARCH=$(uname)
+
+if [ "$ARCH" == "Darwin" ]; then
   export DOCKER_HOST=tcp://localhost:4243
 fi
 
 function which_site(){
-
-  # find relative directory
-  PWD=$(pwd)
-  WD=${PWD/$LOCAL_SITES/}
-  DIR=${WD#*/}
-
-  #find site from path
-  IFS='/' read -ra ADDR <<< "$WD"
-  SITE=${ADDR[0]}
-  echo $SITE 
+  echo $SITE
 }
 
 function init(){
-  SITE=$(which_site $@);
-
-  source $LOCAL_SITES$SITE/ports
-
   if [[ -z $SITE ]]; then
     echo "Couldn't determine site, correct directory?";
     exit 1;
   fi
+
+  source $LOCAL_SITES$SITE/ports
 }
 
 function start(){
-# Run mailcatcher
-  if [ "$(uname)" == "Darwin" ]; then
+  # Run mailcatcher
+  if [ "$ARCH" == "Darwin" ]; then
     mailcatcher --smtp-ip 192.168.33.1
   else
     mailcatcher --smtp-ip 172.17.42.1
   fi
 
-  echo "Running docker with site $1"
+  echo ""
+  echo "Running docker with site: $SITE"
   echo -e "==> http://localhost:"$HTTP
   echo -e "==> ssh root@localhost -p "$SSH
   echo ""
 
   # Check if were running on a mac. If we are, we keep mysql
   # in the vagrant box.
-  if [ "$(uname)" == "Darwin" ]; then
+  if [ "$ARCH" == "Darwin" ]; then
     PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
       -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
@@ -118,7 +118,7 @@ function copy_ssh(){
 
 function drush_cmd(){
   ARGS="${@:2}"
-
+  echo $DIR
   # Remove the old entry for known_hosts (changes on each build)
   ssh-keygen -f "~/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
 
@@ -159,7 +159,7 @@ function initalize_site(){
     # Fire up container and initialize site with db.
     # Check if were running on a mac. If we are, we keep mysql
     # in the vagrant box.
-    if [ "$(uname)" == "Darwin" ]; then
+    if [ "$ARCH" == "Darwin" ]; then
       PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 --dns 8.8.8.8\
         -v $SITES$2/www:/var/www\
         -v /mnt/sda/lib/$2/mysql:/var/lib/mysql\
@@ -192,20 +192,6 @@ function docker_cleanup(){
       ;;
   esac
 }
-
-function install_drupal(){
-  init;
-  # Remove the old entry for known_hosts (changes on each build)
-  ssh-keygen -f "~/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
-
-  echo ""
-  echo "==> Downloading drupal"
-  ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH "cd /var/www && rm -r public_html && drush dl drupal --drupal-project-rename=public_html"
-  echo ""
-  echo "==> Running drush site-install"
-  ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH "cd /var/www/public_html && drush site-install standard --db-url=mysql://db:db@localhost/db --site-name=$1"
-}
-
 
 case $1 in
   up) kran_logo; init; start;;
