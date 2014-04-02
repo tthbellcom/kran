@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.1.6"
+VERSION="0.1.7"
 # Load configuration
 source ~/.kran/kran.conf
 
@@ -58,6 +58,10 @@ function init(){
 }
 
 function start(){
+  if [[ -f "$LOCAL_SITES$SITE/config" ]]; then 
+    source $LOCAL_SITES$SITE/config
+  fi
+
   # Run mailcatcher
   if [ "$ARCH" == "Darwin" ]; then
     mailcatcher --smtp-ip 192.168.33.1
@@ -78,23 +82,32 @@ function start(){
       -v $SITES$SITE/www:/var/www\
       -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
       -v /mnt/sda/lib/$SITE/mysql:/var/lib/mysql\
-     tth/wheezy /opt/start_supervisor_log.sh"
+     $IMAGE /opt/start.sh"
 
-    echo "darwin start"
   else
     PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
       -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
       -v $SITES$SITE/mysql:/var/lib/mysql\
-     tth/wheezy /opt/start_supervisor_log.sh"
+     $IMAGE /opt/start.sh"
   fi
   # Run docker, map directories
   docker $PARAMS
 }
 
 function build(){
-  cat ~/.ssh/id_rsa.pub > ~/.kran/wheezy/adds/id_rsa.pub;
-  cd ~/.kran/wheezy; docker build --rm -t="tth/wheezy" .;
+  if [ -d "~/.kran/images/$2" ]; then
+      cat ~/.ssh/id_rsa.pub > ~/.kran/images/$2/adds/id_rsa.pub;
+      cd ~/.kran/images/$2; docker build --rm -t="kran/$2" .;
+    exit;
+  fi
+
+  for D in `find ~/.kran/images/* -type d -maxdepth 0`
+    do
+      IMAGE_NAME=`basename $D`
+      cat ~/.ssh/id_rsa.pub > $D/adds/id_rsa.pub;
+      cd $D; docker build --rm -t="kran/$IMAGE_NAME" .;
+    done
 }
 
 function connect_ssh(){
@@ -156,12 +169,12 @@ function initalize_site(){
       PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 --dns 8.8.8.8\
         -v $SITES$2/www:/var/www\
         -v /mnt/sda/lib/$2/mysql:/var/lib/mysql\
-       tth/wheezy /opt/install_db.sh"
+       $IMAGE /opt/install_db.sh"
     else
       PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 --dns 8.8.8.8\
         -v $SITES$2/www:/var/www\
         -v $SITES$2/mysql:/var/lib/mysql\
-       tth/wheezy /opt/install_db.sh"
+       $IMAGE /opt/install_db.sh"
     fi
 
     docker $PARAMS
