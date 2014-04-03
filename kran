@@ -107,7 +107,7 @@ function stop(){
 }
 
 function status(){
-  printf "%-20s %-15s %-15s\n" "Site name:" "state:" "container id:"
+  printf "%-20s %-15s %-15s\n" "Site name:" "state:" "url:"
   for D in `find $LOCAL_SITES/* -type d -maxdepth 0`;
     do
       source $D/ports
@@ -116,7 +116,7 @@ function status(){
       
       SITE_NAME=`basename $D`
       if [ ! -z $CONTAINERID ]; then
-        printf "%-20s %-15s %-15s\n" $SITE_NAME "running" $CONTAINERID
+        printf "%-20s %-15s %-15s\n" $SITE_NAME "running" "http://localhost:"$HTTP
       else
         printf "%-20s %-15s %-15s\n" $SITE_NAME "-" "-"
       fi
