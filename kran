@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.1.7"
+VERSION="0.1.8"
 # Load configuration
 source ~/.kran/kran.conf
 
@@ -20,7 +20,9 @@ EOF
 function kran_usage(){
   cat <<EOF
 usage `basename $0`
-    up - start container
+    up [site] - start container
+    stop [site] - stop container
+    status - show running sites
     build - build docker containers
     ssh - connect to container
     clean - kill all containers, and remove them
@@ -37,6 +39,10 @@ DIR=${WD#*/}
 IFS='/' read -ra ADDR <<< "$WD"
 SITE=${ADDR[0]}
 
+if [[ -z $SITE ]]; then
+  SITE=$2
+fi
+
 ARCH=$(uname)
 
 if [ "$ARCH" == "Darwin" ]; then
@@ -49,11 +55,10 @@ function print_params(){
 }
 
 function init(){
-  if [[ -z $SITE ]]; then
+  if [[ -z $SITE ]] || [[ ! -f "$LOCAL_SITES$SITE/ports" ]]; then
     echo "Couldn't determine site, correct directory?";
     exit 1;
   fi
-
   source $LOCAL_SITES$SITE/ports
 }
 
@@ -78,7 +83,7 @@ function start(){
   # Check if were running on a mac. If we are, we keep mysql
   # in the vagrant box.
   if [ "$ARCH" == "Darwin" ]; then
-    PARAMS="run --rm -t -i -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
+    PARAMS="run --rm -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
       -v $SITES$SITE/www:/var/www\
       -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
       -v /mnt/sda/lib/$SITE/mysql:/var/lib/mysql\
@@ -92,7 +97,31 @@ function start(){
      $IMAGE /opt/start.sh"
   fi
   # Run docker, map directories
-  docker $PARAMS
+  docker $PARAMS > /dev/null 2>&1 &
+}
+
+function stop(){
+  echo "Stopping container for site: $SITE"
+  CONTAINERID=`docker ps | grep $HTTP | awk '{ print $1 }'`
+  docker stop $CONTAINERID
+}
+
+function status(){
+  printf "%-20s %-15s %-15s\n" "Site name:" "state:" "container id:"
+  for D in `find $LOCAL_SITES/* -type d -maxdepth 0`;
+    do
+      source $D/ports
+      
+      CONTAINERID=`docker ps | grep $HTTP | awk '{ print $1 }'`
+      
+      SITE_NAME=`basename $D`
+      if [ ! -z $CONTAINERID ]; then
+        printf "%-20s %-15s %-15s\n" $SITE_NAME "running" $CONTAINERID
+      else
+        printf "%-20s %-15s %-15s\n" $SITE_NAME "-" "-"
+      fi
+      
+    done
 }
 
 function build(){
@@ -201,6 +230,8 @@ function docker_cleanup(){
 
 case $1 in
   up) kran_logo; init; start;;
+  stop) kran_logo; init; stop;;
+  status) kran_logo;  status;;
   build) kran_logo; build;;
   ssh) init; connect_ssh $@;;
   scp) init; copy_ssh $@;;
