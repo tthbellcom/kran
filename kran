@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.1.9"
+VERSION="0.1.10"
 # Load configuration
 source ~/.kran/kran.conf
 
@@ -48,11 +48,6 @@ ARCH=$(uname)
 if [ "$ARCH" == "Darwin" ]; then
   export DOCKER_HOST=tcp://localhost:4243
 fi
-
-function print_params(){
-  echo "SITE=$SITE"
-  echo "DIR=$DIR"
-}
 
 function init(){
   if [[ -z $SITE ]] || [[ ! -f "$LOCAL_SITES$SITE/ports" ]]; then
@@ -225,6 +220,16 @@ function docker_cleanup(){
   esac
 }
 
+function vagrant_up(){
+  ARGS="${@:2}"
+  cd $LOCAL_SITES && vagrant $ARGS
+}
+
+function print_params(){
+  echo "SITE=$SITE"
+  echo "DIR=$DIR"
+}
+
 case $1 in
   up) kran_logo; init; start;;
   stop) kran_logo; init; stop;;
@@ -234,6 +239,7 @@ case $1 in
   scp) init; copy_ssh $@;;
   init-site | i) initalize_site $@;;
   clean) docker_cleanup;;
+  vagrant) vagrant_up $@;;
   params) print_params;;
   *) kran_logo; kran_usage; exit 1;
 esac
