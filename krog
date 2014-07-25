@@ -25,7 +25,7 @@ function exec_ssh(){
 # Execute local command.
 function exec_local(){
   echo "==> RUN"
-  eval $@
+  eval "$@"
 }
 
 # Copy file to container.
@@ -34,7 +34,8 @@ function exec_scp(){
   if [[ -z $KROG_SITE ]]; then
     kran scp $HOME/.kran/hooks/$1 $2
   else
-    cd $LOCAL_SITES/$KROG_SITE && kran scp $HOME/.kran/hooks/$1 $2
+    cd $LOCAL_SITES$KROG_SITE && kran scp $HOME/.kran/hooks/$1 $2
+    pwd
   fi
 }
 

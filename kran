@@ -1,5 +1,7 @@
 #!/bin/bash
-VERSION="0.1.10"
+readonly VERSION="0.1.11"
+readonly SSHOPTIONS="-o UserKnownHostsFile /dev/null -o StrictHostKeyChecking no -o LogLevel=quiet"
+
 # Load configuration
 source ~/.kran/kran.conf
 
@@ -38,6 +40,7 @@ DIR=${WD#*/}
 #find site from path
 IFS='/' read -ra ADDR <<< "$WD"
 SITE=${ADDR[0]}
+LOCAL_SITES=$SITES
 
 if [[ -z $SITE ]]; then
   SITE=$2
@@ -46,7 +49,9 @@ fi
 ARCH=$(uname)
 
 if [ "$ARCH" == "Darwin" ]; then
-  export DOCKER_HOST=tcp://localhost:4243
+  export DOCKER_HOST=tcp://kran:2375
+  LOCAL_SITES=/Volumes/sites/
+
 fi
 
 function init(){
@@ -71,28 +76,16 @@ function start(){
 
   echo ""
   echo "Running docker with site: $SITE"
-  echo -e "==> http://localhost:"$HTTP
-  echo -e "==> ssh root@localhost -p "$SSH
+  echo -e "==> http://kran:"$HTTP
+  echo -e "==> ssh root@kran -p "$SSH
   echo ""
 
-  # Check if were running on a mac. If we are, we keep mysql
-  # in the vagrant box.
-  if [ "$ARCH" == "Darwin" ]; then
-    PARAMS="run --rm -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
-      -v $SITES$SITE/www:/var/www\
-      -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
-      -v /mnt/sda/lib/$SITE/mysql:/var/lib/mysql\
-     $IMAGE /opt/start.sh"
-
-  else
-    PARAMS="run --rm -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
-      -v $SITES$SITE/www:/var/www\
-      -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
-      -v $SITES$SITE/mysql:/var/lib/mysql\
-     $IMAGE /opt/start.sh"
-  fi
   # Run docker, map directories
-  docker $PARAMS > /dev/null 2>&1 &
+  docker run -p $HTTP:80 -p $SSH:22 --dns 8.8.8.8\
+    -v $SITES$SITE/www:/var/www\
+    -v $SITES$SITE/vhost:/etc/apache2/sites-enabled\
+    -v $SITES$SITE/mysql:/var/lib/mysql\
+    -d $IMAGE /opt/start.sh > /dev/null
 }
 
 function stop(){
@@ -111,7 +104,7 @@ function status(){
 
       SITE_NAME=`basename $D`
       if [ ! -z $CONTAINERID ]; then
-        printf "%-20s %-15s %-15s\n" $SITE_NAME "running" "http://localhost:"$HTTP
+        printf "%-20s %-15s %-15s\n" $SITE_NAME "running" "http://kran:"$HTTP
       else
         printf "%-20s %-15s %-15s\n" $SITE_NAME "-" "-"
       fi
@@ -139,18 +132,18 @@ function connect_ssh(){
   echo "Connecting to container via ssh"
 
   # Remove the old entry for known_hosts (changes on each build)
-  ssh-keygen -f "~/.ssh/known_hosts" -R [localhost]:$SSH > /dev/null 2>&1
+  ssh-keygen -f "~/.ssh/known_hosts" -R [kran]:$SSH > /dev/null 2>&1
 
   if [[ -z $ARGS ]]; then
     # Dont store knownhosts, dont check
-    ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH
+    ssh -o UserKnownHostsFile /dev/null -o StrictHostKeyChecking no -o LogLevel=quiet root@kran -p $SSH
   else
-    ssh -n -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@localhost -p $SSH "$ARGS"
+    ssh -o UserKnownHostsFile /dev/null -o StrictHostKeyChecking no -o LogLevel=quiet -n root@kran -p $SSH "$ARGS"
   fi
 }
 
 function copy_ssh(){
-  scp -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' -P $SSH $2 root@localhost:$3
+  scp "$SSHOPTIONS" -P $SSH $2 root@kran:$3
 }
 
 function initalize_site(){
@@ -185,20 +178,11 @@ function initalize_site(){
     echo "SSH="$SSHPORT >> $LOCAL_SITES$2/ports
 
     # Fire up container and initialize site with db.
-    # Check if were running on a mac. If we are, we keep mysql
-    # in the vagrant box.
-    if [ "$ARCH" == "Darwin" ]; then
-      PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 --dns 8.8.8.8\
-        -v $SITES$2/www:/var/www\
-        -v /mnt/sda/lib/$2/mysql:/var/lib/mysql\
-       $IMAGE /opt/install_db.sh"
-    else
-      PARAMS="run --rm -t -i -p 10900:80 -p 10901:22 --dns 8.8.8.8\
-        -v $SITES$2/www:/var/www\
-        -v $SITES$2/mysql:/var/lib/mysql\
-       $IMAGE /opt/install_db.sh"
-    fi
-    docker $PARAMS &
+    docker run --rm  \
+      -v $SITES$2/mysql:/var/lib/mysql\
+      $IMAGE /opt/install_db.sh
+    echo return
+    exit
   fi
 }
 

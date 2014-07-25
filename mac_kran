@@ -1,0 +1,13 @@
+#!/bin/bash
+
+boot2docker status
+
+export DOCKER_HOST=tcp://192.168.59.103:2375
+
+docker rm kran-data
+docker run  -v /var/lib/boot2docker/sites:/sites --name kran-data busybox true
+
+docker run --rm -v $(which docker):/docker -v /var/run/docker.sock:/docker.sock svendowideit/samba kran-data
+umount /Volumes/sites
+mount -t smbfs //guest@192.168.59.103/sites /Volumes/sites
+

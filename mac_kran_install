@@ -1,0 +1,11 @@
+#!/bin/bash
+command -v boot2docker >/dev/null 2>&1 || { echo >&2 "I require boot2docker but it's not installed.  Aborting."; exit 1; }
+
+command -v git >/dev/null 2>&1 || { echo >&2 "I require git but it's not installed.  Aborting."; exit 1; }
+
+git clone https://github.com/tthbellcom/kran.git ~/kran
+git clone https://github.com/tthbellcom/dotkran.git ~/.kran
+
+echo "Add kran entry to /etc/hosts":
+echo $(boot2docker ssh ip addr show eth1 2>/dev/null |sed -nEe 's/^[ \t]*inet[ \t]*([0-9.]+)\/.*$/\1/p') kran
+sudo -- sh -c "echo $(boot2docker ssh ip addr show eth1 2>/dev/null |sed -nEe 's/^[ \t]*inet[ \t]*([0-9.]+)\/.*$/\1/p') kran >> /etc/hosts"
