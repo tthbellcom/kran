@@ -1,11 +1,33 @@
 #!/bin/bash
+# Install script for kran on Mac OS
+# Do a bit of complaining if the basics aren't in place
 command -v boot2docker >/dev/null 2>&1 || { echo >&2 "I require boot2docker but it's not installed.  Aborting."; exit 1; }
-
 command -v git >/dev/null 2>&1 || { echo >&2 "I require git but it's not installed.  Aborting."; exit 1; }
 
+# Install kran
+echo "==> Clone kran and dotkran"
 git clone https://github.com/tthbellcom/kran.git ~/kran
 git clone https://github.com/tthbellcom/dotkran.git ~/.kran
+echo ""
+echo "==> Create symlink for kran and krog in /usr/local/bin"
+sudo ln -s ~/kran/kran /usr/local/bin/kran
+sudo ln -s ~/kran/krog /usr/local/bin/krog
+echo
 
-echo "Add kran entry to /etc/hosts":
-echo $(boot2docker ssh ip addr show eth1 2>/dev/null |sed -nEe 's/^[ \t]*inet[ \t]*([0-9.]+)\/.*$/\1/p') kran
+# Add hosts entry
+echo "==> Add kran entry to /etc/hosts":
+echo "   " $(boot2docker ssh ip addr show eth1 2>/dev/null |sed -nEe 's/^[ \t]*inet[ \t]*([0-9.]+)\/.*$/\1/p') kran
 sudo -- sh -c "echo $(boot2docker ssh ip addr show eth1 2>/dev/null |sed -nEe 's/^[ \t]*inet[ \t]*([0-9.]+)\/.*$/\1/p') kran >> /etc/hosts"
+
+echo "==> Set up config files"
+cp ~/.kran/kran.conf.mac.default ~/.kran/krog.conf
+cp ~/.kran/port.conf.default ~/.kran/port.conf
+echo ""
+
+echo "==> Running 'kran build', this will create all images defined in ~/.kran/images"
+kran build
+echo ""
+
+echo "Done!"
+echo ""
+echo "Enjoy kran"
