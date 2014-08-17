@@ -160,14 +160,14 @@ function connect_ssh(){
 
   if [[ -z $ARGS ]]; then
     # Dont store knownhosts, dont check
-    ssh -o UserKnownHostsFile /dev/null -o StrictHostKeyChecking no -o LogLevel=quiet root@kran -p $SSH
+    ssh -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@kran -p $SSH
   else
-    ssh -o UserKnownHostsFile /dev/null -o StrictHostKeyChecking no -o LogLevel=quiet -n root@kran -p $SSH "$ARGS"
+    ssh -n -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' root@kran -p $SSH "$ARGS"
   fi
 }
 
 function copy_ssh(){
-  scp "$SSHOPTIONS" -P $SSH $2 root@kran:$3
+  scp -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' -P $SSH $2 root@kran:$3
 }
 
 function initalize_site(){
