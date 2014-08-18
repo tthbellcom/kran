@@ -35,6 +35,14 @@ EOF
 }
 
 # find relative directory
+ARCH=$(uname)
+
+if [ "$ARCH" == "Darwin" ]; then
+  export DOCKER_HOST=tcp://kran:2375
+  LOCAL_SITES=/Volumes/sites/
+fi
+
+
 PWD=$(pwd)
 WD=${PWD/$LOCAL_SITES/}
 DIR=${WD#*/}
@@ -45,13 +53,6 @@ LOCAL_SITES=$SITES
 
 if [[ -z $SITE ]]; then
   SITE=$2
-fi
-
-ARCH=$(uname)
-
-if [ "$ARCH" == "Darwin" ]; then
-  export DOCKER_HOST=tcp://kran:2375
-  LOCAL_SITES=/Volumes/sites/
 fi
 
 function bootvm(){
