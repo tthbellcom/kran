@@ -40,6 +40,8 @@ ARCH=$(uname)
 if [ "$ARCH" == "Darwin" ]; then
   export DOCKER_HOST=tcp://kran:2375
   LOCAL_SITES=/Volumes/sites/
+else
+  LOCAL_SITES=$SITES
 fi
 
 
@@ -49,7 +51,6 @@ DIR=${WD#*/}
 #find site from path
 IFS='/' read -ra ADDR <<< "$WD"
 SITE=${ADDR[0]}
-LOCAL_SITES=$SITES
 
 if [[ -z $SITE ]]; then
   SITE=$2
