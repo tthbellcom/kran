@@ -1,6 +1,5 @@
 #!/bin/bash
-readonly VERSION="0.1.12"
-readonly SSHOPTIONS="-o UserKnownHostsFile /dev/null -o StrictHostKeyChecking no -o LogLevel=quiet"
+readonly VERSION="0.1.20"
 
 # Load configuration
 source ~/.kran/kran.conf
@@ -27,7 +26,7 @@ usage `basename $0`
     status - show running sites
     build - build docker containers
     ssh - connect to container
-    clean - kill all containers, and remove them
+    clean - run defined clean commands; kill all containers, and remove them
     init-site [name] - initialize site
     bootvm - Start VM and other mac stuff
 
@@ -94,14 +93,13 @@ function start(){
     source $LOCAL_SITES$SITE/config
   fi
 
-  # Run mailcatcher
-  if [ "$ARCH" == "Darwin" ]; then
-    mailcatcher --smtp-ip 192.168.33.1
-  else
-    mailcatcher --smtp-ip 172.17.42.1
+  if [[ ! -z $PRE_UP ]]; then
+    for cmd in "${PRE_UP[@]}"; do
+      eval "$cmd"
+      echo ""
+    done
   fi
 
-  echo ""
   echo "Running docker with site: $SITE"
   echo "==> http://kran:"$HTTP
   echo "==> ssh root@kran -p "$SSH
@@ -122,9 +120,11 @@ function stop(){
 }
 
 function status(){
-  printf "%-20s %-15s %-15s\n" "Site name:" "state:" "url:"
-  for D in `find $LOCAL_SITES/* -maxdepth 0 -type d `;
-    do
+  if [[ ! -z $STATUS_CMD ]]; then
+    eval "$STATUS_CMD"
+  else
+    printf "%-20s %-15s %-15s\n" "Site name:" "state:" "url:"
+    for D in `find $LOCAL_SITES/* -maxdepth 0 -type d `; do
       source $D/ports
 
       CONTAINERID=`docker ps | grep $HTTP | awk '{ print $1 }'`
@@ -134,6 +134,25 @@ function status(){
         printf "%-20s %-15s %-15s\n" $SITE_NAME "running" "http://kran:"$HTTP
       else
         printf "%-20s %-15s %-15s\n" $SITE_NAME "-" "-"
+      fi
+    done
+  fi
+}
+
+##
+# Export sites and address for site
+#
+function export(){
+  for D in `find $LOCAL_SITES/* -maxdepth 0 -type d `;
+    do
+      source $D/ports
+      CONTAINERID=`docker ps | grep $HTTP | awk '{ print $1 }'`
+
+      SITE_NAME=`basename $D`
+      if [ ! -z $CONTAINERID ]; then
+        echo $SITE_NAME"\\http://kran:"$HTTP
+      else
+        echo $SITE_NAME
       fi
     done
 }
@@ -212,7 +231,14 @@ function initalize_site(){
   fi
 }
 
-function docker_cleanup(){
+function clean(){
+  if [[ ! -z $CLEAN ]]; then
+    for cmd in "${CLEAN[@]}"; do
+      eval "$cmd"
+      echo ""
+    done
+  fi
+
   echo "This will kill all active containers, and remove all containers afterwards..."
   read -r -p "Are you sure? [y/N] " RESPONSE
   case $RESPONSE in
@@ -236,15 +262,16 @@ function print_params(){
 }
 
 case $1 in
-  up) kran_logo; bootvm; init; start;;
-  stop) kran_logo; init; stop;;
-  status) kran_logo; bootvm; status;;
-  build) kran_logo; bootvm; build;;
-  ssh) init; connect_ssh $@;;
-  scp) init; copy_ssh $@;;
-  init-site | i) bootvm; initalize_site $@;;
-  clean) docker_cleanup;;
-  params) print_params;;
-  bootvm) bootvm up;; 
-  *) kran_logo; kran_usage; exit 1;
+  up            ) kran_logo; bootvm; init; start;;
+  stop          ) kran_logo; init; stop;;
+  status        ) kran_logo; bootvm; status;;
+  export        ) export;;
+  build         ) kran_logo; bootvm; build;;
+  ssh           ) init; connect_ssh $@;;
+  scp           ) init; copy_ssh $@;;
+  init-site | i ) bootvm; initalize_site $@;;
+  clean         ) clean;;
+  params        ) print_params;;
+  bootvm        ) bootvm up;;
+  *             ) kran_logo; kran_usage; exit 1;
 esac
