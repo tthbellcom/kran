@@ -50,35 +50,12 @@ DIR=${WD#*/}
 #find site from path
 IFS='/' read -ra ADDR <<< "$WD"
 SITE=${ADDR[0]}
+SCRIPT="`readlink -e $0`"
+SCRIPTPATH=`dirname $SCRIPT`
 
 if [[ -z $SITE ]]; then
   SITE=$2
 fi
-
-function bootvm(){
-  if [ "$ARCH" == "Darwin" ]; then
-    if [ "$(boot2docker status)" != "running" ]; then
-      if [ "$1" == "up" ]; then
-        echo "==> Start boot2docker VM and other mac stuff"
-        boot2docker start
-
-        echo "==> Set up Volume container"
-        docker rm kran-data
-        docker run  -v /var/lib/boot2docker/sites:/sites --name kran-data busybox true
-
-        echo "==> Share volume container with samba"
-        docker run --rm -v $(which docker):/docker -v /var/run/docker.sock:/docker.sock svendowideit/samba kran-data
-
-        echo "==> Mount sites directory"
-        mkdir -p /Volumes/sites
-        mount -t smbfs //guest@192.168.59.103/sites /Volumes/sites
-      else
-        echo "boot2docker vm isn't running, 'kran bootvm' to get started"
-        exit 1
-      fi
-    fi
-  fi
-}
 
 function init(){
   if [[ -z $SITE ]] || [[ ! -f "$LOCAL_SITES$SITE/ports" ]]; then
@@ -93,12 +70,7 @@ function start(){
     source $LOCAL_SITES$SITE/config
   fi
 
-  if [[ ! -z $PRE_UP ]]; then
-    for cmd in "${PRE_UP[@]}"; do
-      eval "$cmd"
-      echo ""
-    done
-  fi
+  pre_up
 
   echo "Running docker with site: $SITE"
   echo "==> http://kran:"$HTTP
@@ -187,16 +159,19 @@ function connect_ssh(){
   fi
 }
 
-function copy_ssh(){
+function copy_ssh() {
   scp -o 'UserKnownHostsFile /dev/null' -o 'StrictHostKeyChecking no' -o 'LogLevel=quiet' -P $SSH $2 root@kran:$3
 }
 
-function initalize_site(){
+function initalize_site() {
   if [[ -d "$LOCAL_SITES$2" ]]; then
     echo "Site already exists?"
   else
     echo "Initialize site $2"
     echo $LOCAL_SITES$2
+
+    # Only put here, because were moving boot2docker stuff to preup commands
+    pre_up
 
     # Create site folders.
     mkdir -p $LOCAL_SITES$2/www
@@ -231,10 +206,15 @@ function initalize_site(){
   fi
 }
 
-function clean(){
+function clean() {
   if [[ ! -z $CLEAN ]]; then
     for cmd in "${CLEAN[@]}"; do
-      eval "$cmd"
+      kranscript="$SCRIPTPATH""/scripts/""${cmd%% *}""/""${cmd%% *}"
+      if [[ -f "$kranscript" ]]; then
+        eval "$SCRIPTPATH""/scripts/""${cmd%% *}""/""$cmd"
+      else
+        eval "$cmd"
+      fi
       echo ""
     done
   fi
@@ -256,22 +236,36 @@ function clean(){
   esac
 }
 
-function print_params(){
+function pre_up() {
+  if [[ ! -z $PRE_UP ]]; then
+    for cmd in "${PRE_UP[@]}"; do
+      kranscript="$SCRIPTPATH""/scripts/""${cmd%% *}""/""${cmd%% *}"
+      if [[ -f "$kranscript" ]]; then
+        eval "$SCRIPTPATH""/scripts/""${cmd%% *}""/""$cmd"
+      else
+        eval "$cmd"
+      fi
+      echo ""
+    done
+  fi
+}
+
+
+function print_params() {
   echo "SITE=$SITE"
   echo "DIR=$DIR"
 }
 
 case $1 in
-  up            ) kran_logo; bootvm; init; start;;
+  up            ) kran_logo; init; start;;
   stop          ) kran_logo; init; stop;;
-  status        ) kran_logo; bootvm; status;;
+  status        ) kran_logo; status;;
   export        ) export;;
-  build         ) kran_logo; bootvm; build;;
+  build         ) kran_logo; build;;
   ssh           ) init; connect_ssh $@;;
   scp           ) init; copy_ssh $@;;
-  init-site | i ) bootvm; initalize_site $@;;
+  init-site | i ) initalize_site $@;;
   clean         ) clean;;
   params        ) print_params;;
-  bootvm        ) bootvm up;;
   *             ) kran_logo; kran_usage; exit 1;
 esac

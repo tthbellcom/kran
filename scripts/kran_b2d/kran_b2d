@@ -1,0 +1,40 @@
+#!/bin/bash
+function up() {
+  if [ "$(boot2docker status)" != "running" ]; then
+    echo "==> Start boot2docker VM and other mac stuff"
+    boot2docker start
+
+    echo "==> Set up Volume container"
+    docker rm kran-data
+    docker run  -v /var/lib/boot2docker/sites:/sites --name kran-data busybox true
+
+    echo "==> Share volume container with samba"
+    docker run --rm -v $(which docker):/docker -v /var/run/docker.sock:/docker.sock svendowideit/samba kran-data
+
+    echo "==> Mount sites directory"
+    mkdir -p /Volumes/sites
+    mount -t smbfs //guest@192.168.59.103/sites /Volumes/sites
+  else
+    echo "!!> boot2docker already running?"
+    exit 1
+  fi
+}
+
+function stop() {
+  echo "==> Stopping boot2docker"
+  boot2docker stop
+}
+
+function help() {
+  echo "Usage $0 up|stop"
+}
+
+if [ "$ARCH" == "Darwin" ]; then
+  case $1 in
+    up   ) up;;
+    stop ) stop;;
+    *    ) help;;
+  esac
+else
+  echo "!!> This is not a mac!"
+fi

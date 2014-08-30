@@ -1,0 +1,54 @@
+#!/bin/bash
+# kran_proxy
+# Start/stop kran_proxy nicely
+SCRIPT="`readlink -e $0`"
+SCRIPTPATH=`dirname $SCRIPT`
+source ~/.kran/kran.conf
+source ~/.kran/.kran_proxy
+
+function start() {
+  echo "==> Starting kran_proxy"
+
+  PS=`ps -A | grep node | grep $KRAN_PROXY_PID`
+  if [[ ! -z "$PS" ]] ; then
+    echo "!!> kran_proxy already running?"
+    exit 1
+  fi
+
+  NODE=$(which node)
+  $NODE $SCRIPTPATH/kran_proxy.js --tld=$TLD > /dev/null 2>&1 &
+  echo "KRAN_PROXY_PID="$! > ~/.kran/.kran_proxy
+  echo "*** kran_proxy started as background process"
+}
+
+function stop() {
+  source ~/.kran/.kran_proxy
+  echo "==> Stopping kran_proxy"
+  kill $KRAN_PROXY_PID > /dev/null 2>&1
+  if [[ $? -eq  0 ]] ; then
+    echo "==> success"
+  else
+    echo "!!> problem stopping proxy, not started?"
+  fi
+}
+
+function status() {
+  PS=`ps -A | grep node | grep $KRAN_PROXY_PID`
+  if [[ -z "$PS" ]] ; then
+    echo "!!> kran_proxy is not running"
+    echo ""
+  fi
+  NODE=$(which node)
+  $NODE $SCRIPTPATH/kran_proxy.js status --tld=$TLD
+}
+
+function help() {
+  echo "Usage: $0 start|stop"
+}
+
+case $1 in
+  start  ) start;;
+  status ) status;;
+  stop   ) stop;;
+  *      ) help;;
+esac
