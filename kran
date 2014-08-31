@@ -93,7 +93,7 @@ function stop(){
 
 function status(){
   if [[ ! -z $STATUS_CMD ]]; then
-    eval "$STATUS_CMD"
+    execute_cmd $STATUS_CMD
   else
     printf "%-20s %-15s %-15s\n" "Site name:" "state:" "url:"
     for D in `find $LOCAL_SITES/* -maxdepth 0 -type d `; do
@@ -209,12 +209,7 @@ function initalize_site() {
 function clean() {
   if [[ ! -z $CLEAN ]]; then
     for cmd in "${CLEAN[@]}"; do
-      kranscript="$SCRIPTPATH""/scripts/""${cmd%% *}""/""${cmd%% *}"
-      if [[ -f "$kranscript" ]]; then
-        eval "$SCRIPTPATH""/scripts/""${cmd%% *}""/""$cmd"
-      else
-        eval "$cmd"
-      fi
+      execute_cmd $cmd
       echo ""
     done
   fi
@@ -239,14 +234,21 @@ function clean() {
 function pre_up() {
   if [[ ! -z $PRE_UP ]]; then
     for cmd in "${PRE_UP[@]}"; do
-      kranscript="$SCRIPTPATH""/scripts/""${cmd%% *}""/""${cmd%% *}"
-      if [[ -f "$kranscript" ]]; then
-        eval "$SCRIPTPATH""/scripts/""${cmd%% *}""/""$cmd"
-      else
-        eval "$cmd"
-      fi
+      execute_cmd $cmd
       echo ""
     done
+  fi
+}
+
+# Check if command is kran script, if it is, execute it,
+# otherwise execute normally
+function execute_cmd() {
+  cmd=$@
+  kranscript="$SCRIPTPATH""/scripts/""${cmd%% *}""/""${cmd%% *}"
+  if [[ -f "$kranscript" ]]; then
+    eval "$SCRIPTPATH""/scripts/""${cmd%% *}""/""$cmd"
+  else
+    eval "$cmd"
   fi
 }
 

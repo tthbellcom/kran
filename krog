@@ -10,7 +10,8 @@ export KROG_ARG1=$2
 export KROG_ARG2=$3
 export KROG_ARG3=$4
 export KROG_ARG4=$5
-export KROG_SITE=""
+export KROG_SITE=$SITE
+export KROG_DIR=""
 
 # Execute command in container.
 function exec_ssh(){
@@ -40,37 +41,53 @@ function exec_scp(){
 }
 
 # Show message.
-function exec_msg(){
+function exec_msg() {
   echo $@
 }
 
-function set_site(){
+function set_site() {
  KROG_SITE=$1
+}
+
+function set_dir() {
+  if [[ "$1" == "_sites" ]]; then
+    SITE="-"
+    cd $SITES
+  else
+    cd $SITES$SITE"/"$1
+  fi
 }
 
 # Parse hooks.
 function parse_hook(){
   # Replace varibles
   ARGS="${@:2}"
-  ARGS=$(echo $ARGS | sed -e "s/\$ARGS/$KROG_ARGS/g")
+  ARGS=$(echo $ARGS | sed -e "s|\$ARGS|$KROG_ARGS|g")
   ARGS=$(echo $ARGS | sed -e "s|\$DIR|$DIR|g")
-  ARGS=$(echo $ARGS | sed -e "s/\$1/$KROG_ARG1/g")
-  ARGS=$(echo $ARGS | sed -e "s/\$2/$KROG_ARG2/g")
-  ARGS=$(echo $ARGS | sed -e "s/\$3/$KROG_ARG3/g")
-  ARGS=$(echo $ARGS | sed -e "s/\$4/$KROG_ARG4/g")
+  ARGS=$(echo $ARGS | sed -e "s|\$1|$KROG_ARG1|g")
+  ARGS=$(echo $ARGS | sed -e "s|\$2|$KROG_ARG2|g")
+  ARGS=$(echo $ARGS | sed -e "s|\$3|$KROG_ARG3|g")
+  ARGS=$(echo $ARGS | sed -e "s|\$4|$KROG_ARG4|g")
+
+  case $1 in
+    DIR) set_dir $ARGS;;
+    STE) set_site $ARGS;;
+  esac
+
+  # if the site is not set (or purposely omitted (with setting DIR to _sites))
+  # we stop parsing the script here.
+  if [[ -z $SITE ]]; then
+    echo "krog must be run from a kran site dir!"
+    exit 1
+  fi
 
   case $1 in
     SSH) exec_ssh $ARGS;;
     RUN) exec_local $ARGS;;
     ADD) exec_scp $ARGS;;
     MSG) exec_msg $ARGS;;
-    STE) set_site $ARGS;;
   esac
 }
-
-if [[ -z $SITE ]]; then
-  echo "krog must be run from a kran site dir!"
-fi
 
 if [[ -z $1 ]]; then
   echo "krog v. $VERSION"
@@ -81,7 +98,6 @@ if [[ -z $1 ]]; then
   echo ""
   exit 1
 fi
-
 
 while read p; do
   parse_hook $p
